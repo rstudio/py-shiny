@@ -726,6 +726,7 @@ class Chat:
             role=message["role"],
             content_type=content_type,
             chunk_type=chunk_type,
+            html_deps=message.get("html_deps", []),
         )
 
         # print(msg)
@@ -1267,6 +1268,7 @@ def as_transformed_message(message: ChatMessage) -> TransformedMessage:
         role=message["role"],
         transform_key=transform_key,
         pre_transform_key=pre_transform_key,
+        html_deps=message.get("html_deps", []),
     )
 
 

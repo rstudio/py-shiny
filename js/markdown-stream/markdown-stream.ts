@@ -12,6 +12,7 @@ import {
   createElement,
   createSVGIcon,
   showShinyClientMessage,
+  throttle,
 } from "../utils/_utils";
 
 type ContentType = "markdown" | "semi-markdown" | "html" | "text";
@@ -79,6 +80,7 @@ class MarkdownElement extends LightElement {
   streaming = false;
   @property({ type: Boolean, reflect: true, attribute: "auto-scroll" })
   auto_scroll = false;
+  @property({ attribute: "html-deps" }) html_deps = "";
   @property({ type: Function }) onContentChange?: () => void;
   @property({ type: Function }) onStreamEnd?: () => void;
 
@@ -107,6 +109,9 @@ class MarkdownElement extends LightElement {
         console.warn("Failed to highlight code:", error);
       }
       if (this.streaming) this.#appendStreamingDot();
+
+      // Render Shiny HTML dependencies and bind inputs/outputs
+      MarkdownElement._throttledShinyBind(this);
 
       // Update scrollable element after content has been added
       this.#updateScrollableElement();
@@ -138,6 +143,12 @@ class MarkdownElement extends LightElement {
         }
       }
     }
+
+    if (changedProperties.has("html_deps")) {
+      // TODO: will this always fire?
+      console.log("html_deps changed", this.html_deps);
+      MarkdownElement.#renderDependencies(this.html_deps);
+    }
   }
 
   #appendStreamingDot(): void {
@@ -146,6 +157,47 @@ class MarkdownElement extends LightElement {
 
   #removeStreamingDot(): void {
     this.querySelector(`svg.${SVG_DOT_CLASS}`)?.remove();
+  }
+
+  static async #renderDependencies(html_deps: string): Promise<void> {
+    if (!window.Shiny) return;
+    if (!html_deps) return;
+
+    try {
+      const deps = JSON.parse(html_deps);
+      if (!Array.isArray(deps)) {
+        throw new TypeError("HTML dependencies must be an array");
+      }
+
+      try {
+        await Shiny.renderDependenciesAsync(deps);
+      } catch (renderError) {
+        showShinyClientMessage({
+          status: "error",
+          message: `Failed to render HTML dependencies: ${renderError}`,
+        });
+      }
+    } catch (error) {
+      showShinyClientMessage({
+        status: "error",
+        message: `Failed to parse HTML dependencies: ${error}`,
+      });
+    }
+  }
+
+  @throttle(250)
+  private static async _throttledShinyBind(el: HTMLElement): Promise<void> {
+    if (!window.Shiny) return;
+    if (!Shiny.bindAll) return;
+
+    try {
+      await Shiny.bindAll(el);
+    } catch (bindError) {
+      showShinyClientMessage({
+        status: "error",
+        message: `Failed to bind Shiny inputs/outputs: ${bindError}`,
+      });
+    }
   }
 
   #highlightAndCodeCopy(): void {

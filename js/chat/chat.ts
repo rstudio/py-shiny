@@ -15,6 +15,7 @@ type Message = {
   role: "user" | "assistant";
   chunk_type: "message_start" | "message_end" | null;
   content_type: ContentType;
+  html_deps: string;
   operation: "append" | null;
 };
 type ShinyChatMessage = {
@@ -58,8 +59,10 @@ const ICONS = {
 
 class ChatMessage extends LightElement {
   @property() content = "...";
-  @property() content_type: ContentType = "markdown";
+  @property({ attribute: "content-type" }) content_type: ContentType =
+    "markdown";
   @property({ type: Boolean, reflect: true }) streaming = false;
+  @property({ attribute: "html-deps" }) html_deps = "";
 
   render() {
     const noContent = this.content.trim().length === 0;
@@ -71,6 +74,7 @@ class ChatMessage extends LightElement {
         content=${this.content}
         content-type=${this.content_type}
         ?streaming=${this.streaming}
+        html-deps=${this.html_deps}
         auto-scroll
         .onContentChange=${this.#onContentChange}
         .onStreamEnd=${this.#makeSuggestionsAccessible}
@@ -262,7 +266,6 @@ class ChatInput extends LightElement {
 }
 
 class ChatContainer extends LightElement {
-
   private get input(): ChatInput {
     return this.querySelector(CHAT_INPUT_TAG) as ChatInput;
   }

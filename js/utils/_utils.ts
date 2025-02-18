@@ -49,4 +49,36 @@ function showShinyClientMessage({
   );
 }
 
-export { LightElement, createElement, createSVGIcon, showShinyClientMessage, };
+////////////////////////////////////////////////
+// General helpers
+////////////////////////////////////////////////
+
+/**
+ * Creates a throttle decorator that ensures the decorated method isn't called more frequently than the specified delay
+ * @param delay The minimum time (in ms) that must pass between calls
+ */
+export function throttle(delay: number) {
+  return function (
+    _target: any,
+    _propertyKey: string,
+    descriptor: PropertyDescriptor
+  ) {
+    const originalMethod = descriptor.value;
+    let timeout: number | undefined;
+
+    descriptor.value = function (...args: any[]) {
+      if (timeout) {
+        window.clearTimeout(timeout);
+      }
+
+      timeout = window.setTimeout(() => {
+        originalMethod.apply(this, args);
+        timeout = undefined;
+      }, delay);
+    };
+
+    return descriptor;
+  };
+}
+
+export { LightElement,createElement,createSVGIcon,showShinyClientMessage };

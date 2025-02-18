@@ -2,7 +2,7 @@ import sys
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from htmltools import HTML
+from htmltools import HTML, Tag, Tagifiable, TagList
 
 from ._chat_types import ChatMessage
 
@@ -75,6 +75,40 @@ class DictNormalizer(BaseMessageNormalizer):
 
     def can_normalize_chunk(self, chunk: Any) -> bool:
         return isinstance(chunk, dict)
+
+
+class TagifiableNormalizer(BaseMessageNormalizer):
+    def normalize(self, message: Any) -> ChatMessage:
+        x = cast("Tagifiable", message)
+        tags = x.tagify()
+        if isinstance(tags, (Tag, TagList)):
+            deps = tags.get_dependencies()
+        else:
+            deps = []
+        return ChatMessage(
+            content=str(tags),
+            role="assistant",
+            html_deps=deps,
+        )
+
+    def normalize_chunk(self, chunk: Any) -> ChatMessage:
+        x = cast("Tagifiable", chunk)
+        tags = x.tagify()
+        if isinstance(tags, (Tag, TagList)):
+            deps = tags.get_dependencies()
+        else:
+            deps = []
+        return ChatMessage(
+            content=str(tags),
+            role="assistant",
+            html_deps=deps,
+        )
+
+    def can_normalize(self, message: Any) -> bool:
+        return isinstance(message, Tagifiable)
+
+    def can_normalize_chunk(self, chunk: Any) -> bool:
+        return isinstance(chunk, Tagifiable)
 
 
 class LangChainNormalizer(BaseMessageNormalizer):
@@ -259,6 +293,7 @@ class NormalizerRegistry:
             "google": GoogleNormalizer(),
             "langchain": LangChainNormalizer(),
             "ollama": OllamaNormalizer(),
+            "tagify": TagifiableNormalizer(),
             "dict": DictNormalizer(),
             "string": StringNormalizer(),
         }
